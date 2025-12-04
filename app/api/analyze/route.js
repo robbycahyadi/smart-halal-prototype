@@ -1,67 +1,109 @@
+// app/api/analyze/route.js
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
+import { MASTER_SCOPE_CLASSIFICATION, MASTER_CRITICAL_POINTS_LOGIC } from "@/app/lib/knowledge";
 
+// KONFIGURASI SESUAI PRD PART 2 (Poin 4.A)
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 export async function POST(req) {
   try {
-    const data = await req.json();
-    const { fileBase64 } = data;
+    const formData = await req.formData();
+    const file = formData.get("file");
 
-    if (!fileBase64) {
-      return NextResponse.json({ error: "File data is required" }, { status: 400 });
+    if (!file) {
+      return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
     }
 
-    // Bersihkan header base64 (data:application/pdf;base64,...)
-    const base64Data = fileBase64.split(",")[1];
+    // Konversi File ke Base64 agar bisa dibaca Gemini
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const fileBase64 = buffer.toString("base64");
 
-    // --- PERBAIKAN DI SINI ---
-    // Menggunakan "gemini-1.5-flash-latest" yang lebih stabil ditemukan oleh API
-    const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+    // === SYSTEM PROMPT ARCHITECTURE (Sesuai PRD Part 2 Poin 3) ===
+    const SYSTEM_PROMPT = `
+    PERAN:
+    Anda adalah Senior Auditor Halal Sistem Jaminan Produk Halal (SJPH) di LPH BBSPJI Selulosa.
+    Tugas Anda adalah melakukan validasi dokumen pra-audit secara ketat, akurat, dan berbasis aturan (Rule-Based).
 
-    const prompt = `
-      Bertindaklah sebagai Auditor Halal LPH. 
-      Analisis dokumen PDF (Bill of Materials/Daftar Bahan) yang dilampirkan ini.
-      
-      Tugas Anda:
-      1. Baca Tabel dalam PDF tersebut.
-      2. Validasi: Apakah ini dokumen Daftar Bahan/Resep?
-      3. Scanning Bahan Kritis: Cari bahan-bahan berisiko tinggi seperti:
-         - Alkohol / Ethanol / Rum / Mirin
-         - Gelatin / Kolagen
-         - Lemak Hewani / Lard / Shortening (tanpa keterangan nabati)
-         - Enzim / Pepsin
-      
-      Output WAJIB JSON murni:
-      {
-        "status": "APPROVED" (jika bersih/aman) atau "REJECTED" (jika ada bahan haram/meragukan),
-        "summary": "Ringkasan analisis 1 kalimat.",
-        "critical_items": [
-          { "name": "Nama Bahan", "risk": "Alasan Risiko", "action": "Wajib Upload Sertifikat Halal" }
-        ]
-      }
+    REFERENSI WAJIB (JANGAN MENGARANG):
+    1. [DAFTAR RUANG LINGKUP BAKU]:
+    ${MASTER_SCOPE_CLASSIFICATION}
+    
+    2. [MATRIKS TITIK KRITIS & LOGIKA AUDIT]:
+    ${MASTER_CRITICAL_POINTS_LOGIC}
+
+    INSTRUKSI KERJA LANGKAH DEMI LANGKAH (STEP-BY-STEP):
+    
+    LANGKAH 1: NAVIGASI & DETEKSI JENIS FORMULIR
+    - Baca Judul/Kop Formulir. Identifikasi apakah Makanan/Minuman/Barang/Jasa.
+    - Tentukan Kategori Produk dengan mencocokkan Nama Produk user terhadap [DAFTAR RUANG LINGKUP BAKU].
+    
+    LANGKAH 2: LOKALISASI TABEL "DAFTAR NAMA BAHAN"
+    - Cari halaman yang memuat tabel dengan judul spesifik: "Daftar Nama Bahan".
+    - Fokus pada tabel yang memuat informasi Produsen dan Sertifikat.
+    
+    LANGKAH 3: EKSTRAKSI & AUDIT PER BARIS (ROW-BY-ROW)
+    Baca setiap baris dan lakukan analisis:
+    A. EKSTRAKSI DATA: Nama Bahan, Produsen, Lembaga Penerbit, Nomor Sertifikat.
+    B. ANALISIS TITIK KRITIS (CRITICAL POINT DETECTION):
+       - Cek [Nama Bahan] terhadap keyword risiko di [MATRIKS TITIK KRITIS].
+       - Contoh: "Lemak" -> Cek Aturan Makanan No. 2. "Flavor" -> Cek Aturan Makanan No. 11.
+    C. VERIFIKASI DOKUMEN PENDUKUNG:
+       - STATUS: AMAN (HIJAU) -> Jika Positive List atau SH Valid.
+       - STATUS: PRIORITAS TINGGI (MERAH) -> Jika TITIK KRITIS tapi Sertifikat KOSONG/"-". Berikan alasan: "Bahan Kritis [Kategori]. Wajib SH."
+       - STATUS: PERLU CEK (KUNING) -> Bahan kimia/kompleks tanpa sertifikat.
+    
+    LANGKAH 4: FORMAT OUTPUT (STRICT JSON)
+    Keluarkah hasil analisis HANYA dalam format JSON berikut:
+    {
+      "audit_summary": {
+        "detected_product": "String",
+        "scope_classification": {
+           "code": "String",
+           "category": "String"
+        },
+        "total_ingredients": Number,
+        "critical_count": Number,
+        "conclusion_text": "String ringkasan untuk auditor"
+      },
+      "detailed_audit": [
+        {
+          "row_number": Number,
+          "ingredient_name": "String",
+          "producer": "String",
+          "certificate_status": "VALID" | "MISSING",
+          "audit_status": "AMAN" | "PRIORITAS TINGGI" | "PERLU CEK",
+          "risk_analysis": "String penjelasan teknis",
+          "recommendation": "String tindakan"
+        }
+      ]
+    }
     `;
 
+    // Inisialisasi Model Gemini Flash (Sesuai PRD Part 2 Poin 4.A)
+    const model = genAI.getGenerativeModel({ 
+        model: "gemini-flash-latest",
+        generationConfig: { responseMimeType: "application/json" } // Force JSON output
+    });
+
     const result = await model.generateContent([
-      prompt,
-      { 
-        inlineData: { 
-          data: base64Data, 
-          mimeType: "application/pdf" 
-        } 
+      SYSTEM_PROMPT,
+      {
+        inlineData: {
+          data: fileBase64,
+          mimeType: "application/pdf",
+        },
       },
     ]);
 
     const responseText = result.response.text();
-    const cleanedText = responseText.replace(/```json/g, "").replace(/```/g, "").trim();
-    
-    return NextResponse.json(JSON.parse(cleanedText));
+    const jsonResponse = JSON.parse(responseText);
+
+    return NextResponse.json(jsonResponse);
 
   } catch (error) {
-    console.error("PDF Analysis Error:", error);
-    return NextResponse.json(
-      { error: "Gagal memproses PDF. Pastikan file < 10MB.", details: error.message },
-      { status: 500 }
-    );
+    console.error("AI Error:", error);
+    return NextResponse.json({ error: "Gagal memproses dokumen" }, { status: 500 });
   }
 }
