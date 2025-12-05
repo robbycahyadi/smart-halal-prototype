@@ -80,6 +80,11 @@ ATURAN DETEKSI TITIK KRITIS BERDASARKAN DOKUMEN SOP:
 - Cek Resin Ion Exchange: Cek status kehalalan.
 11. BTP (Bahan Tambahan Pangan):
 - Pewarna, Perasa, Pengawet: Cek pelarut (Etanol < 0.5% & bukan khamr).
+12. BAHAN ALAM & PASAR TRADISIONAL (Bumbu/Rempah):
+- Jika bahan berupa Tumbuhan Utuh/Segar (Jahe, Lengkuas, Daun) -> Status: AMAN (Positive List).
+- Jika bahan berupa BUBUK/GILING (Merica Bubuk, Kunyit Bubuk) dari Pasar Tradisional -> Status: PERLU CEK.
+    (Risiko: Kontaminasi alat giling bekas daging non-halal atau campuran bahan lain).
+- Jika nama bahan tidak spesifik (misal hanya "Merica"), asumsikan BUBUK jika dari Pasar -> Status: PERLU CEK.
 
 === [REFERENSI SOP 7/2.2: MINUMAN] ===
 1. Alkohol/Etanol:

@@ -38,6 +38,12 @@ export async function POST(req) {
     LANGKAH 1: NAVIGASI & DETEKSI JENIS FORMULIR
     - Baca Judul/Kop Formulir. Identifikasi apakah Makanan/Minuman/Barang/Jasa.
     - Tentukan Kategori Produk dengan mencocokkan Nama Produk user terhadap [DAFTAR RUANG LINGKUP BAKU].
+    - Anda HARUS menyalin persis (Copy-Paste) salah satu string dari daftar [DAFTAR RUANG LINGKUP BAKU].
+    - Anda DILARANG membuat nama kategori sendiri.
+    - Contoh Salah: "Kategori Makanan Ringan".
+    - Contoh Benar: "n. Makanan ringan siap santap".
+    - Jika produk berupa menu restoran (Bakso, Soto, Nasi Goreng, dll), WAJIB masuk ke kategori: [A.p] Penyediaan makanan dan minuman dengan pengolahan.
+    - Jangan gunakan nomor dokumen (7/2.1) sebagai nama kategori. Gunakan Kode Huruf (A.a, A.b, dst).
     
     LANGKAH 2: LOKALISASI TABEL "DAFTAR NAMA BAHAN"
     - Cari halaman yang memuat tabel dengan judul spesifik: "Daftar Nama Bahan".
@@ -50,9 +56,19 @@ export async function POST(req) {
        - Cek [Nama Bahan] terhadap keyword risiko di [MATRIKS TITIK KRITIS].
        - Contoh: "Lemak" -> Cek Aturan Makanan No. 2. "Flavor" -> Cek Aturan Makanan No. 11.
     C. VERIFIKASI DOKUMEN PENDUKUNG:
-       - STATUS: AMAN (HIJAU) -> Jika Positive List atau SH Valid.
-       - STATUS: PRIORITAS TINGGI (MERAH) -> Jika TITIK KRITIS tapi Sertifikat KOSONG/"-". Berikan alasan: "Bahan Kritis [Kategori]. Wajib SH."
-       - STATUS: PERLU CEK (KUNING) -> Bahan kimia/kompleks tanpa sertifikat.
+       a. STATUS: AMAN (HIJAU)
+          - Kriteria 1: Bahan memiliki Nomor Sertifikat Halal yang terisi di kolom tabel (Valid).
+          - Kriteria 2: BAHAN ALAM NABATI SEGAR (Sayur, Rempah Utuh, Buah, Umbi) meskipun beli di pasar tradisional tanpa sertifikat. Contoh: Laos, Jahe, Kunyit, Daun Jeruk, Bawang.
+            -> Alasan: "Bahan Nabati Segar/Alami (Positive List)."
+       
+       b. STATUS: CEK LANJUT (KUNING)
+          - Kriteria: Rempah BUBUK atau GILING yang dibeli di pasar tanpa merek/sertifikat. Contoh: "Merica Bubuk", "Ketumbar Halus".
+            -> Alasan: "Potensi kontaminasi penggilingan atau anti-caking agent."
+          - Kriteria: Bahan kimia/tambahan pangan tanpa sertifikat.
+
+       c. STATUS: PRIORITAS TINGGI (MERAH)
+          - Kriteria: Bahan HEWANI (Daging, Ayam, Lemak, Gelatin) TANPA Sertifikat Halal.
+            -> Alasan: "Bahan Hewani Kritis. Wajib Sertifikat Halal (SH)."
     
     LANGKAH 4: FORMAT OUTPUT (STRICT JSON)
     Keluarkah hasil analisis HANYA dalam format JSON berikut:
@@ -84,7 +100,11 @@ export async function POST(req) {
     // Inisialisasi Model Gemini Flash (Sesuai PRD Part 2 Poin 4.A)
     const model = genAI.getGenerativeModel({ 
         model: "gemini-flash-latest",
-        generationConfig: { responseMimeType: "application/json" } // Force JSON output
+        generationConfig: { 
+          temperature: 0.0, // Matikan "kreativitas"
+          topP: 1.0,
+          maxOutputTokens: 8192,
+          responseMimeType: "application/json" } // Force JSON output
     });
 
     const result = await model.generateContent([
