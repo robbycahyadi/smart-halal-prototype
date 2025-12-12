@@ -33,7 +33,7 @@ export default function AuditorPanel({ analysisData, onApprove }) {
           </div>
         </div>
         <div className="mt-4 p-3 bg-gray-50 rounded-md text-sm text-gray-700 italic border border-gray-100">
-          "AI Note: {audit_summary.conclusion_text}"
+          &quot;AI Note: {audit_summary.conclusion_text}&quot;
         </div>
       </div>
 
@@ -50,7 +50,7 @@ export default function AuditorPanel({ analysisData, onApprove }) {
                 <th className="px-6 py-3">Produsen</th>
                 <th className="px-6 py-3">Dokumen</th>
                 <th className="px-6 py-3">Analisis Risiko (AI)</th>
-                <th className="px-6 py-3">Status Audit</th>
+                <th className="px-6 py-3">Critical Level</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
