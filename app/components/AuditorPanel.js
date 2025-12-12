@@ -74,9 +74,9 @@ export default function AuditorPanel({ analysisData, onApprove }) {
                     <p className="text-xs text-gray-500 mt-1">{row.risk_analysis}</p>
                   </td>
                   <td className="px-6 py-4">
-                    {row.audit_status === 'AMAN' && <span className="flex items-center gap-1 text-green-600 font-bold"><CheckCircle size={16}/> Aman</span>}
-                    {row.audit_status === 'PRIORITAS TINGGI' && <span className="flex items-center gap-1 text-red-600 font-bold"><XCircle size={16}/> Kritis</span>}
-                    {row.audit_status === 'PERLU CEK' && <span className="flex items-center gap-1 text-yellow-600 font-bold"><AlertTriangle size={16}/> Cek Lanjut</span>}
+                    {row.audit_status === 'AMAN' && <span className="flex items-center gap-1 text-green-600 font-bold"><CheckCircle size={16}/> Low</span>}
+                    {row.audit_status === 'PRIORITAS TINGGI' && <span className="flex items-center gap-1 text-red-600 font-bold"><XCircle size={16}/> Medium</span>}
+                    {row.audit_status === 'PERLU CEK' && <span className="flex items-center gap-1 text-yellow-600 font-bold"><AlertTriangle size={16}/> High</span>}
                   </td>
                 </tr>
               ))}
